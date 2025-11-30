@@ -1,4 +1,3 @@
-import { min } from "moment";
 import mongoose from "mongoose";
 
 const userSchema = new mongoose.Schema(
@@ -9,10 +8,6 @@ const userSchema = new mongoose.Schema(
       unique: true,
     },
     fullname: {
-      type: String,
-      required: true,
-    },
-    password: {
       type: String,
       required: true,
     },
