@@ -2,10 +2,15 @@ import User from "../models/user.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { generateToken } from "./../lib/utils.js";
-import cloudinaryV2 from './../lib/cloudinary.js';
+import cloudinaryV2 from "./../lib/cloudinary.js";
 
 export const signup = async (req, res) => {
   const { email, fullname, password } = req.body;
+  console.log("Signup request received:", {
+    email,
+    fullname,
+    passwordLength: password?.length,
+  });
   try {
     if (!email || !fullname || !password) {
       return res.status(400).json({ message: "All fields are required" });
@@ -85,24 +90,24 @@ export const logout = (req, res) => {
   }
 };
 
-
 export const updateProfile = async (req, res) => {
   try {
-    const {profilePic}= req.body;
-    const userID= req.user._id;
+    const { profilePic } = req.body;
+    const userID = req.user._id;
 
-    if(!profilePic){
-      return res.status(400).json({message: "Profile picture is required"});
+    if (!profilePic) {
+      return res.status(400).json({ message: "Profile picture is required" });
     }
     const uploadResponse = await cloudinaryV2.uploader.upload(profilePic);
 
     const updatedUser = await User.findByIdAndUpdate(
       userID,
       { profilePic: uploadResponse.secure_url },
-      { new: true });
+      { new: true }
+    );
 
     res.status(200).json(updatedUser);
-  }catch (error) {
+  } catch (error) {
     console.log("error in updateProfile:", error.message);
     res.status(500).json({ message: "Server Error" });
   }
