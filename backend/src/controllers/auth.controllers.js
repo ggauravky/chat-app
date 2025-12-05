@@ -56,18 +56,22 @@ export const signup = async (req, res) => {
 
 export const login = async (req, res) => {
   const { email, password } = req.body;
+  console.log("Login request received:", { email, hasPassword: !!password });
   try {
     const user = await User.findOne({ email });
     if (!user) {
+      console.log("User not found:", email);
       return res.status(400).json({ message: "User does not exist" });
     }
 
     const isPasswordCorrect = await bcrypt.compare(password, user.password);
     if (!isPasswordCorrect) {
+      console.log("Invalid password for user:", email);
       return res.status(400).json({ message: "Invalid credentials" });
     }
 
     generateToken(user._id, res);
+    console.log("Login successful for user:", email);
     res.status(200).json({
       _id: user._id,
       fullname: user.fullname,
@@ -94,11 +98,16 @@ export const updateProfile = async (req, res) => {
   try {
     const { profilePic } = req.body;
     const userID = req.user._id;
+    console.log("Update profile request for user:", userID);
 
     if (!profilePic) {
+      console.log("No profile picture provided");
       return res.status(400).json({ message: "Profile picture is required" });
     }
+
+    console.log("Uploading to Cloudinary...");
     const uploadResponse = await cloudinaryV2.uploader.upload(profilePic);
+    console.log("Cloudinary upload successful:", uploadResponse.secure_url);
 
     const updatedUser = await User.findByIdAndUpdate(
       userID,
@@ -106,9 +115,11 @@ export const updateProfile = async (req, res) => {
       { new: true }
     );
 
+    console.log("Profile updated successfully");
     res.status(200).json(updatedUser);
   } catch (error) {
     console.log("error in updateProfile:", error.message);
+    console.error("Full error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 };
