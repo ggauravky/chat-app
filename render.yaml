@@ -2,8 +2,9 @@ services:
   - type: web
     name: chat-app
     runtime: node
+    plan: free
     buildCommand: npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend
-    startCommand: npm run start --prefix backend
+    startCommand: node backend/src/index.js
     envVars:
       - key: NODE_ENV
         value: production
