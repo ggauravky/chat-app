@@ -5,6 +5,7 @@ services:
     plan: free
     buildCommand: npm install --prefix backend && npm install --prefix frontend && npm run build --prefix frontend
     startCommand: node backend/src/index.js
+    healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production
