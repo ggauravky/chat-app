@@ -14,16 +14,6 @@ const LoginPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
-    if (!formData.email.trim()) {
-      toast.error("Email is required");
-      return;
-    }
-    if (!formData.password) {
-      toast.error("Password is required");
-      return;
-    }
-
     login(formData);
   };
 
@@ -58,8 +48,7 @@ const LoginPage = () => {
                 </div>
                 <input
                   type="email"
-                  className="input input-bordered w-full"
-                  style={{ paddingLeft: '2.5rem' }}
+                  className={`input input-bordered w-full pl-10`}
                   placeholder="you@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -77,8 +66,7 @@ const LoginPage = () => {
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className="input input-bordered w-full"
-                  style={{ paddingLeft: '2.5rem', paddingRight: '2.5rem' }}
+                  className={`input input-bordered w-full pl-10`}
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}

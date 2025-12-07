@@ -16,39 +16,8 @@ const ProfilePage = () => {
 
     reader.onload = async () => {
       const base64Image = reader.result;
-
-      const img = new Image();
-      img.src = base64Image;
-
-      img.onload = async () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 800;
-        const MAX_HEIGHT = 800;
-
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-
-        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.7);
-        setSelectedImg(compressedBase64);
-        await updateProfile({ profilePic: compressedBase64 });
-      };
+      setSelectedImg(base64Image);
+      await updateProfile({ profilePic: base64Image });
     };
   };
 
@@ -102,7 +71,7 @@ const ProfilePage = () => {
                 <User className="w-4 h-4" />
                 Full Name
               </div>
-              <p className="px-4 py-2.5 bg-base-200 rounded-lg border text-base">{authUser?.fullname}</p>
+              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{authUser?.fullName}</p>
             </div>
 
             <div className="space-y-1.5">
@@ -110,7 +79,7 @@ const ProfilePage = () => {
                 <Mail className="w-4 h-4" />
                 Email Address
               </div>
-              <p className="px-4 py-2.5 bg-base-200 rounded-lg border text-base">{authUser?.email}</p>
+              <p className="px-4 py-2.5 bg-base-200 rounded-lg border">{authUser?.email}</p>
             </div>
           </div>
 

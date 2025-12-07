@@ -6,7 +6,7 @@ import { useAuthStore } from "./useAuthStore";
 export const useChatStore = create((set, get) => ({
   messages: [],
   users: [],
-  selectedUser: JSON.parse(localStorage.getItem("selectedUser")) || null,
+  selectedUser: null,
   isUsersLoading: false,
   isMessagesLoading: false,
 
@@ -25,13 +25,10 @@ export const useChatStore = create((set, get) => ({
   getMessages: async (userId) => {
     set({ isMessagesLoading: true });
     try {
-      console.log("Fetching messages for userId:", userId);
       const res = await axiosInstance.get(`/messages/${userId}`);
-      console.log("Messages API response:", res.data);
       set({ messages: res.data });
     } catch (error) {
-      console.error("Error fetching messages:", error);
-      toast.error(error.response?.data?.message || "Failed to fetch messages");
+      toast.error(error.response.data.message);
     } finally {
       set({ isMessagesLoading: false });
     }
@@ -39,10 +36,7 @@ export const useChatStore = create((set, get) => ({
   sendMessage: async (messageData) => {
     const { selectedUser, messages } = get();
     try {
-      const res = await axiosInstance.post(
-        `/messages/send/${selectedUser._id}`,
-        messageData
-      );
+      const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, messageData);
       set({ messages: [...messages, res.data] });
     } catch (error) {
       toast.error(error.response.data.message);
@@ -54,11 +48,9 @@ export const useChatStore = create((set, get) => ({
     if (!selectedUser) return;
 
     const socket = useAuthStore.getState().socket;
-    if (!socket) return;
 
     socket.on("newMessage", (newMessage) => {
-      const isMessageSentFromSelectedUser =
-        newMessage.senderId === selectedUser._id;
+      const isMessageSentFromSelectedUser = newMessage.senderId === selectedUser._id;
       if (!isMessageSentFromSelectedUser) return;
 
       set({
@@ -69,12 +61,8 @@ export const useChatStore = create((set, get) => ({
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
-    if (!socket) return;
     socket.off("newMessage");
   },
 
-  setSelectedUser: (selectedUser) => {
-    localStorage.setItem("selectedUser", JSON.stringify(selectedUser));
-    set({ selectedUser });
-  },
+  setSelectedUser: (selectedUser) => set({ selectedUser }),
 }));
