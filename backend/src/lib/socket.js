@@ -9,7 +9,7 @@ const io = new Server(server, {
   cors: {
     origin:
       process.env.NODE_ENV === "production"
-        ? [process.env.FRONTEND_URL || "https://your-app.vercel.app"]
+        ? true // Allow same origin for Render deployment
         : ["http://localhost:5173"],
     credentials: true,
   },
