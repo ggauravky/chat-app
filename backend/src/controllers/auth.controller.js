@@ -30,7 +30,6 @@ export const signup = async (req, res) => {
     });
 
     if (newUser) {
-      // generate jwt token here
       generateToken(newUser._id, res);
       await newUser.save();
 
@@ -39,6 +38,8 @@ export const signup = async (req, res) => {
         fullName: newUser.fullName,
         email: newUser.email,
         profilePic: newUser.profilePic,
+        about: newUser.about,
+        lastSeen: newUser.lastSeen,
       });
     } else {
       res.status(400).json({ message: "Invalid user data" });
@@ -70,6 +71,8 @@ export const login = async (req, res) => {
       fullName: user.fullName,
       email: user.email,
       profilePic: user.profilePic,
+      about: user.about,
+      lastSeen: user.lastSeen,
     });
   } catch (error) {
     console.log("Error in login controller", error.message);
@@ -89,17 +92,27 @@ export const logout = (req, res) => {
 
 export const updateProfile = async (req, res) => {
   try {
-    const { profilePic } = req.body;
+    const { profilePic, about } = req.body;
     const userId = req.user._id;
 
-    if (!profilePic) {
-      return res.status(400).json({ message: "Profile pic is required" });
+    const updateData = {};
+
+    if (profilePic) {
+      const uploadResponse = await cloudinary.uploader.upload(profilePic);
+      updateData.profilePic = uploadResponse.secure_url;
     }
 
-    const uploadResponse = await cloudinary.uploader.upload(profilePic);
+    if (about !== undefined) {
+      updateData.about = about;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ message: "Nothing to update" });
+    }
+
     const updatedUser = await User.findByIdAndUpdate(
       userId,
-      { profilePic: uploadResponse.secure_url },
+      updateData,
       { new: true }
     ).select("-password");
 
@@ -118,3 +131,4 @@ export const checkAuth = (req, res) => {
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
+

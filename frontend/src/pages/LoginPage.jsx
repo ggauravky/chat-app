@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import AuthImagePattern from "../components/AuthImagePattern";
 import { Link } from "react-router-dom";
-import { Eye, EyeOff, Loader2, Lock, Mail, MessageSquare } from "lucide-react";
+import { Eye, EyeOff, Loader2, Lock, Mail, Zap } from "lucide-react";
 
 const LoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -25,19 +25,16 @@ const LoginPage = () => {
           {/* Logo */}
           <div className="text-center mb-8">
             <div className="flex flex-col items-center gap-2 group">
-              <div
-                className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20
-              transition-colors"
-              >
-                <MessageSquare className="w-6 h-6 text-primary" />
+              <div className="size-14 rounded-2xl bg-green-500 flex items-center justify-center shadow-lg group-hover:scale-105 transition-transform">
+                <Zap className="size-8 text-white" />
               </div>
-              <h1 className="text-2xl font-bold mt-2">Welcome Back</h1>
-              <p className="text-base-content/60">Sign in to your account</p>
+              <h1 className="text-3xl font-extrabold mt-2 tracking-tight">Zapp</h1>
+              <p className="text-base-content/60 text-sm">Welcome back! Sign in to continue</p>
             </div>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div className="form-control">
               <label className="label">
                 <span className="label-text font-medium">Email</span>
@@ -48,7 +45,7 @@ const LoginPage = () => {
                 </div>
                 <input
                   type="email"
-                  className={`input input-bordered w-full pl-10`}
+                  className="input input-bordered w-full pl-10"
                   placeholder="you@example.com"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
@@ -66,7 +63,7 @@ const LoginPage = () => {
                 </div>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className={`input input-bordered w-full pl-10`}
+                  className="input input-bordered w-full pl-10"
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -85,12 +82,9 @@ const LoginPage = () => {
               </div>
             </div>
 
-            <button type="submit" className="btn btn-primary w-full" disabled={isLoggingIn}>
+            <button type="submit" className="btn btn-success w-full text-white" disabled={isLoggingIn}>
               {isLoggingIn ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  Loading...
-                </>
+                <><Loader2 className="h-5 w-5 animate-spin" /> Signing in...</>
               ) : (
                 "Sign in"
               )}
@@ -98,9 +92,9 @@ const LoginPage = () => {
           </form>
 
           <div className="text-center">
-            <p className="text-base-content/60">
+            <p className="text-base-content/60 text-sm">
               Don&apos;t have an account?{" "}
-              <Link to="/signup" className="link link-primary">
+              <Link to="/signup" className="link link-success font-semibold">
                 Create account
               </Link>
             </p>
@@ -108,12 +102,13 @@ const LoginPage = () => {
         </div>
       </div>
 
-      {/* Right Side - Image/Pattern */}
+      {/* Right Side */}
       <AuthImagePattern
-        title={"Welcome back!"}
-        subtitle={"Sign in to continue your conversations and catch up with your messages."}
+        title="Welcome back to Zapp!"
+        subtitle="Sign in to continue your conversations and catch up with your messages."
       />
     </div>
   );
 };
 export default LoginPage;
+

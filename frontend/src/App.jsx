@@ -6,7 +6,7 @@ import LoginPage from "./pages/LoginPage";
 import SettingsPage from "./pages/SettingsPage";
 import ProfilePage from "./pages/ProfilePage";
 
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { useAuthStore } from "./store/useAuthStore";
 import { useThemeStore } from "./store/useThemeStore";
 import { useEffect } from "react";
@@ -15,16 +15,16 @@ import { Loader } from "lucide-react";
 import { Toaster } from "react-hot-toast";
 
 const App = () => {
-  const { authUser, checkAuth, isCheckingAuth, onlineUsers } = useAuthStore();
+  const { authUser, checkAuth, isCheckingAuth } = useAuthStore();
   const { theme } = useThemeStore();
+  const location = useLocation();
 
-  console.log({ onlineUsers });
+  // Hide top navbar on the main chat page — WhatsApp has no top bar
+  const hideNavbar = authUser && location.pathname === "/";
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
-
-  console.log({ authUser });
 
   if (isCheckingAuth && !authUser)
     return (
@@ -35,7 +35,7 @@ const App = () => {
 
   return (
     <div data-theme={theme}>
-      <Navbar />
+      {!hideNavbar && <Navbar />}
 
       <Routes>
         <Route path="/" element={authUser ? <HomePage /> : <Navigate to="/login" />} />
@@ -45,7 +45,7 @@ const App = () => {
         <Route path="/profile" element={authUser ? <ProfilePage /> : <Navigate to="/login" />} />
       </Routes>
 
-      <Toaster />
+      <Toaster position="top-center" />
     </div>
   );
 };

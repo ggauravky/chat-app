@@ -7,9 +7,39 @@ import { getReceiverSocketId, io } from "../lib/socket.js";
 export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
-    const filteredUsers = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
+    const users = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
 
-    res.status(200).json(filteredUsers);
+    // Attach last message and unread count for each user
+    const usersWithMeta = await Promise.all(
+      users.map(async (user) => {
+        const lastMessage = await Message.findOne({
+          $or: [
+            { senderId: loggedInUserId, receiverId: user._id },
+            { senderId: user._id, receiverId: loggedInUserId },
+          ],
+          // exclude messages deleted for this user
+          deletedFor: { $ne: loggedInUserId },
+        })
+          .sort({ createdAt: -1 })
+          .select("text image createdAt senderId isDeleted");
+
+        const unreadCount = await Message.countDocuments({
+          senderId: user._id,
+          receiverId: loggedInUserId,
+          status: { $ne: "read" },
+          deletedFor: { $ne: loggedInUserId },
+          isDeleted: false,
+        });
+
+        return {
+          ...user.toObject(),
+          lastMessage: lastMessage || null,
+          unreadCount,
+        };
+      })
+    );
+
+    res.status(200).json(usersWithMeta);
   } catch (error) {
     console.error("Error in getUsersForSidebar: ", error.message);
     res.status(500).json({ error: "Internal server error" });
@@ -26,7 +56,8 @@ export const getMessages = async (req, res) => {
         { senderId: myId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: myId },
       ],
-    });
+      deletedFor: { $ne: myId },
+    }).populate("replyTo", "text image senderId isDeleted");
 
     res.status(200).json(messages);
   } catch (error) {
@@ -37,27 +68,34 @@ export const getMessages = async (req, res) => {
 
 export const sendMessage = async (req, res) => {
   try {
-    const { text, image } = req.body;
+    const { text, image, replyTo } = req.body;
     const { id: receiverId } = req.params;
     const senderId = req.user._id;
 
     let imageUrl;
     if (image) {
-      // Upload base64 image to cloudinary
       const uploadResponse = await cloudinary.uploader.upload(image);
       imageUrl = uploadResponse.secure_url;
     }
+
+    // Check if receiver is online → deliver immediately
+    const receiverSocketId = getReceiverSocketId(receiverId);
+    const initialStatus = receiverSocketId ? "delivered" : "sent";
 
     const newMessage = new Message({
       senderId,
       receiverId,
       text,
       image: imageUrl,
+      replyTo: replyTo || null,
+      status: initialStatus,
     });
 
     await newMessage.save();
 
-    const receiverSocketId = getReceiverSocketId(receiverId);
+    // Populate replyTo before broadcasting
+    await newMessage.populate("replyTo", "text image senderId isDeleted");
+
     if (receiverSocketId) {
       io.to(receiverSocketId).emit("newMessage", newMessage);
     }
@@ -65,6 +103,68 @@ export const sendMessage = async (req, res) => {
     res.status(201).json(newMessage);
   } catch (error) {
     console.log("Error in sendMessage controller: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Mark all messages from a sender as read
+export const markMessagesRead = async (req, res) => {
+  try {
+    const { id: senderId } = req.params;  // the other person
+    const myId = req.user._id;
+
+    await Message.updateMany(
+      { senderId, receiverId: myId, status: { $ne: "read" } },
+      { status: "read" }
+    );
+
+    // Notify the sender via socket that their messages were read
+    const senderSocketId = getReceiverSocketId(senderId);
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("messagesRead", { readBy: myId.toString() });
+    }
+
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.log("Error in markMessagesRead: ", error.message);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+// Delete message for me OR for everyone
+export const deleteMessage = async (req, res) => {
+  try {
+    const { id: messageId } = req.params;
+    const { deleteFor } = req.body; // "me" | "everyone"
+    const userId = req.user._id;
+
+    const message = await Message.findById(messageId);
+    if (!message) return res.status(404).json({ error: "Message not found" });
+
+    if (deleteFor === "everyone") {
+      // Only sender can delete for everyone
+      if (message.senderId.toString() !== userId.toString()) {
+        return res.status(403).json({ error: "You can only delete your own messages for everyone" });
+      }
+      message.isDeleted = true;
+      message.text = null;
+      message.image = null;
+      await message.save();
+
+      // Notify the other party
+      const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("messageDeleted", { messageId, deleteFor: "everyone" });
+      }
+    } else {
+      // Delete for me only
+      message.deletedFor.addToSet(userId);
+      await message.save();
+    }
+
+    res.status(200).json({ success: true, message });
+  } catch (error) {
+    console.log("Error in deleteMessage: ", error.message);
     res.status(500).json({ error: "Internal server error" });
   }
 };
