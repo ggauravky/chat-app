@@ -3,8 +3,6 @@ import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 
-// VITE_BACKEND_URL is set in Vercel dashboard for split deployment (frontend on Vercel, backend on Render).
-// Falls back to same origin when deployed as monolith on Render.
 const BASE_URL =
   import.meta.env.VITE_BACKEND_URL ||
   (import.meta.env.MODE === "development" ? "http://localhost:5001" : window.location.origin);
@@ -82,11 +80,59 @@ export const useAuthStore = create((set, get) => ({
     }
   },
 
+  // Block / Unblock
+  blockUser: async (userId) => {
+    try {
+      const res = await axiosInstance.post(`/auth/block/${userId}`);
+      set({ authUser: { ...get().authUser, blockedUsers: res.data.blockedUsers } });
+      toast.success("User blocked");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Block failed");
+    }
+  },
+
+  unblockUser: async (userId) => {
+    try {
+      const res = await axiosInstance.delete(`/auth/block/${userId}`);
+      set({ authUser: { ...get().authUser, blockedUsers: res.data.blockedUsers } });
+      toast.success("User unblocked");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Unblock failed");
+    }
+  },
+
+  // Mute / Unmute
+  muteChat: async (userId) => {
+    try {
+      const res = await axiosInstance.post(`/auth/mute/${userId}`);
+      set({ authUser: { ...get().authUser, mutedChats: res.data.mutedChats } });
+      toast.success("Chat muted");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Mute failed");
+    }
+  },
+
+  unmuteChat: async (userId) => {
+    try {
+      const res = await axiosInstance.delete(`/auth/mute/${userId}`);
+      set({ authUser: { ...get().authUser, mutedChats: res.data.mutedChats } });
+      toast.success("Chat unmuted");
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Unmute failed");
+    }
+  },
+
+  // Save Web Push subscription
+  savePushSubscription: async (subscription) => {
+    try {
+      await axiosInstance.post("/auth/push-subscribe", { subscription });
+    } catch (_) {}
+  },
+
   connectSocket: () => {
     const { authUser } = get();
     if (!authUser || get().socket?.connected) return;
 
-    // Create socket but do NOT call .connect() — socket.io auto-connects
     const socket = io(BASE_URL, {
       query: { userId: authUser._id },
       autoConnect: true,
@@ -96,6 +142,18 @@ export const useAuthStore = create((set, get) => ({
 
     socket.on("getOnlineUsers", (userIds) => {
       set({ onlineUsers: userIds });
+    });
+
+    // Online/offline presence toasts
+    socket.on("userOnline", ({ userId }) => {
+      const { onlineUsers } = get();
+      if (!onlineUsers.includes(userId)) {
+        set({ onlineUsers: [...onlineUsers, userId] });
+      }
+    });
+
+    socket.on("userOffline", ({ userId }) => {
+      set({ onlineUsers: get().onlineUsers.filter((id) => id !== userId) });
     });
   },
 

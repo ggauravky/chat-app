@@ -7,9 +7,20 @@ import { getReceiverSocketId, io } from "../lib/socket.js";
 export const getUsersForSidebar = async (req, res) => {
   try {
     const loggedInUserId = req.user._id;
-    const users = await User.find({ _id: { $ne: loggedInUserId } }).select("-password");
+    const me = await User.findById(loggedInUserId);
+    const blockedIds = me.blockedUsers || [];
 
-    // Attach last message and unread count for each user
+    // Exclude blocked users AND users who blocked us
+    const usersWhoBlockedMe = await User.find({ blockedUsers: loggedInUserId }).select("_id");
+    const excludedIds = [
+      ...blockedIds.map((id) => id.toString()),
+      ...usersWhoBlockedMe.map((u) => u._id.toString()),
+    ];
+
+    const users = await User.find({
+      _id: { $ne: loggedInUserId, $nin: excludedIds },
+    }).select("-password");
+
     const usersWithMeta = await Promise.all(
       users.map(async (user) => {
         const lastMessage = await Message.findOne({
@@ -17,7 +28,6 @@ export const getUsersForSidebar = async (req, res) => {
             { senderId: loggedInUserId, receiverId: user._id },
             { senderId: user._id, receiverId: loggedInUserId },
           ],
-          // exclude messages deleted for this user
           deletedFor: { $ne: loggedInUserId },
         })
           .sort({ createdAt: -1 })
@@ -31,10 +41,15 @@ export const getUsersForSidebar = async (req, res) => {
           isDeleted: false,
         });
 
+        const isMuted = (me.mutedChats || []).some(
+          (id) => id.toString() === user._id.toString()
+        );
+
         return {
           ...user.toObject(),
           lastMessage: lastMessage || null,
           unreadCount,
+          isMuted,
         };
       })
     );
@@ -50,16 +65,31 @@ export const getMessages = async (req, res) => {
   try {
     const { id: userToChatId } = req.params;
     const myId = req.user._id;
+    // Pagination: ?before=<messageId>&limit=30 (default 30)
+    const limit = Math.min(parseInt(req.query.limit) || 30, 100);
+    const before = req.query.before; // cursor: load messages older than this id
 
-    const messages = await Message.find({
+    const filter = {
       $or: [
         { senderId: myId, receiverId: userToChatId },
         { senderId: userToChatId, receiverId: myId },
       ],
       deletedFor: { $ne: myId },
-    }).populate("replyTo", "text image senderId isDeleted");
+    };
 
-    res.status(200).json(messages);
+    if (before) {
+      // Find messages older than the cursor id
+      const cursorMsg = await Message.findById(before).select("createdAt");
+      if (cursorMsg) filter.createdAt = { $lt: cursorMsg.createdAt };
+    }
+
+    const messages = await Message.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate("replyTo", "text image senderId isDeleted");
+
+    // Return in chronological order
+    res.status(200).json(messages.reverse());
   } catch (error) {
     console.log("Error in getMessages controller: ", error.message);
     res.status(500).json({ error: "Internal server error" });

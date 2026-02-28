@@ -47,8 +47,12 @@ const ChatContainer = () => {
     deleteMessage,
     setReplyingTo,
     typingUsers,
+    hasMoreMessages,
+    isLoadingMore,
+    loadMoreMessages,
   } = useChatStore();
   const { authUser } = useAuthStore();
+  const [seenPopover, setSeenPopover] = useState(null); // messageId
   const messageEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const prevMsgCountRef = useRef(0);
@@ -159,9 +163,32 @@ const ChatContainer = () => {
             "radial-gradient(circle at 1px 1px, oklch(var(--b3)) 1px, transparent 0)",
           backgroundSize: "24px 24px",
         }}
-        onClick={() => setContextMenu(null)}
+        onClick={() => { setContextMenu(null); setSeenPopover(null); }}
         onScroll={handleScroll}
       >
+        {/* Load more button */}
+        {hasMoreMessages && (
+          <div className="flex justify-center pt-2 pb-1">
+            <button
+              className="btn btn-xs btn-ghost text-base-content/50 hover:text-base-content"
+              onClick={async () => {
+                const el = scrollContainerRef.current;
+                const prevScrollHeight = el?.scrollHeight || 0;
+                await loadMoreMessages(selectedUser._id);
+                // Maintain scroll position after prepend
+                if (el) el.scrollTop = el.scrollHeight - prevScrollHeight;
+              }}
+              disabled={isLoadingMore}
+            >
+              {isLoadingMore ? (
+                <span className="loading loading-spinner loading-xs" />
+              ) : (
+                "Load older messages"
+              )}
+            </button>
+          </div>
+        )}
+
         {messages.map((message, idx) => {
           const isMine = message.senderId === authUser._id;
           const isStarred = starredIds.has(message._id);
@@ -218,6 +245,10 @@ const ChatContainer = () => {
                     : "bg-base-100 rounded-bl-none"
                   }`}
                 onContextMenu={(e) => handleContextMenu(e, message)}
+                title={new Date(message.createdAt).toLocaleString([], {
+                  weekday: "short", year: "numeric", month: "short",
+                  day: "numeric", hour: "2-digit", minute: "2-digit",
+                })}
               >
                 {/* Star indicator */}
                 {isStarred && (
@@ -264,7 +295,24 @@ const ChatContainer = () => {
                   <span className="text-[10px] opacity-50">
                     {formatMessageTime(message.createdAt)}
                   </span>
-                  {isMine && !message.isDeleted && <MessageTicks status={message.status} />}
+                  {isMine && !message.isDeleted && (
+                    <button
+                      className="focus:outline-none"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (message.status === "read")
+                          setSeenPopover((prev) => prev === message._id ? null : message._id);
+                      }}
+                      title={message.status === "read" ? "Seen" : undefined}
+                    >
+                      <MessageTicks status={message.status} />
+                    </button>
+                  )}
+                  {seenPopover === message._id && (
+                    <div className="absolute bottom-full right-0 mb-1 z-30 bg-base-100 border border-base-300 shadow-lg rounded-lg px-3 py-1.5 text-xs whitespace-nowrap">
+                      ✓✓ Read by <span className="font-semibold">{selectedUser.fullName}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 

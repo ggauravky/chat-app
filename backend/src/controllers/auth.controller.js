@@ -132,3 +132,67 @@ export const checkAuth = (req, res) => {
   }
 };
 
+// POST /api/auth/block/:id
+export const blockUser = async (req, res) => {
+  try {
+    const me = await User.findById(req.user._id);
+    const targetId = req.params.id;
+    me.blockedUsers.addToSet(targetId);
+    await me.save();
+    res.status(200).json({ blockedUsers: me.blockedUsers });
+  } catch (error) {
+    console.log("Error in blockUser:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// DELETE /api/auth/block/:id
+export const unblockUser = async (req, res) => {
+  try {
+    const me = await User.findById(req.user._id);
+    me.blockedUsers.pull(req.params.id);
+    await me.save();
+    res.status(200).json({ blockedUsers: me.blockedUsers });
+  } catch (error) {
+    console.log("Error in unblockUser:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// POST /api/auth/mute/:id
+export const muteChat = async (req, res) => {
+  try {
+    const me = await User.findById(req.user._id);
+    me.mutedChats.addToSet(req.params.id);
+    await me.save();
+    res.status(200).json({ mutedChats: me.mutedChats });
+  } catch (error) {
+    console.log("Error in muteChat:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// DELETE /api/auth/mute/:id
+export const unmuteChat = async (req, res) => {
+  try {
+    const me = await User.findById(req.user._id);
+    me.mutedChats.pull(req.params.id);
+    await me.save();
+    res.status(200).json({ mutedChats: me.mutedChats });
+  } catch (error) {
+    console.log("Error in unmuteChat:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+// POST /api/auth/push-subscribe
+export const savePushSubscription = async (req, res) => {
+  try {
+    const { subscription } = req.body;
+    await User.findByIdAndUpdate(req.user._id, { pushSubscription: subscription });
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.log("Error in savePushSubscription:", error.message);
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+};

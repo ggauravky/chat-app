@@ -31,6 +31,11 @@ io.on("connection", (socket) => {
 
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
+  // Notify everyone that this user just came online
+  if (userId) {
+    socket.broadcast.emit("userOnline", { userId });
+  }
+
   // --------------- Typing indicators ---------------
   socket.on("typing", ({ receiverId }) => {
     const receiverSocketId = getReceiverSocketId(receiverId);
@@ -70,6 +75,11 @@ io.on("connection", (socket) => {
     console.log("A user disconnected", socket.id);
     delete userSocketMap[userId];
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
+
+    // Notify everyone this user went offline
+    if (userId) {
+      socket.broadcast.emit("userOffline", { userId });
+    }
 
     // Update lastSeen on disconnect
     if (userId) {

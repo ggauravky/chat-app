@@ -3,14 +3,18 @@ import toast from "react-hot-toast";
 import { axiosInstance } from "../lib/axios";
 import { useAuthStore } from "./useAuthStore";
 
+const PAGE_SIZE = 30;
+
 export const useChatStore = create((set, get) => ({
   messages: [],
   users: [],
   selectedUser: null,
   isUsersLoading: false,
   isMessagesLoading: false,
-  replyingTo: null,      // message object being replied to
-  typingUsers: {},       // { userId: true } for typing indicator
+  isLoadingMore: false,
+  hasMoreMessages: false,
+  replyingTo: null,
+  typingUsers: {},
 
   getUsers: async () => {
     set({ isUsersLoading: true });
@@ -25,14 +29,38 @@ export const useChatStore = create((set, get) => ({
   },
 
   getMessages: async (userId) => {
-    set({ isMessagesLoading: true });
+    set({ isMessagesLoading: true, messages: [], hasMoreMessages: false });
     try {
-      const res = await axiosInstance.get(`/messages/${userId}`);
-      set({ messages: res.data });
+      const res = await axiosInstance.get(`/messages/${userId}?limit=${PAGE_SIZE}`);
+      set({
+        messages: res.data,
+        hasMoreMessages: res.data.length === PAGE_SIZE,
+      });
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to load messages");
     } finally {
       set({ isMessagesLoading: false });
+    }
+  },
+
+  loadMoreMessages: async () => {
+    const { messages, selectedUser, isLoadingMore, hasMoreMessages } = get();
+    if (!selectedUser || isLoadingMore || !hasMoreMessages) return;
+
+    set({ isLoadingMore: true });
+    try {
+      const oldest = messages[0]?._id;
+      const res = await axiosInstance.get(
+        `/messages/${selectedUser._id}?limit=${PAGE_SIZE}&before=${oldest}`
+      );
+      set({
+        messages: [...res.data, ...messages],
+        hasMoreMessages: res.data.length === PAGE_SIZE,
+      });
+    } catch (error) {
+      toast.error("Failed to load older messages");
+    } finally {
+      set({ isLoadingMore: false });
     }
   },
 
@@ -52,7 +80,6 @@ export const useChatStore = create((set, get) => ({
   markMessagesRead: async (userId) => {
     try {
       await axiosInstance.put(`/messages/read/${userId}`);
-      // Update local statuses — compare as strings because MongoDB ObjectIds
       set({
         messages: get().messages.map((m) =>
           String(m.senderId) === String(userId) && m.status !== "read"
@@ -60,7 +87,6 @@ export const useChatStore = create((set, get) => ({
             : m
         ),
       });
-      // Notify sender via socket
       const socket = useAuthStore.getState().socket;
       socket?.emit("markRead", { senderId: userId });
     } catch (error) {
@@ -70,9 +96,7 @@ export const useChatStore = create((set, get) => ({
 
   deleteMessage: async (messageId, deleteFor) => {
     try {
-      const res = await axiosInstance.delete(`/messages/${messageId}`, {
-        data: { deleteFor },
-      });
+      await axiosInstance.delete(`/messages/${messageId}`, { data: { deleteFor } });
       if (deleteFor === "everyone") {
         set({
           messages: get().messages.map((m) =>
@@ -95,11 +119,10 @@ export const useChatStore = create((set, get) => ({
     if (!selectedUser) return;
     const socket = useAuthStore.getState().socket;
 
-    // New incoming message
     socket.on("newMessage", (newMessage) => {
       const fromSelected = newMessage.senderId === selectedUser._id;
       if (!fromSelected) {
-        // Update unread count in users list
+        const isMuted = get().users.find((u) => u._id === newMessage.senderId)?.isMuted;
         set({
           users: get().users.map((u) =>
             u._id === newMessage.senderId
@@ -107,12 +130,17 @@ export const useChatStore = create((set, get) => ({
               : u
           ),
         });
+        // Show online toast for new message from non-selected user (only if not muted)
+        if (!isMuted) {
+          const sender = get().users.find((u) => u._id === newMessage.senderId);
+          if (sender) {
+            toast(`New message from ${sender.fullName}`, { icon: "💬", duration: 3000 });
+          }
+        }
         return;
       }
       set({ messages: [...get().messages, newMessage] });
-      // Auto mark as read since the chat is open
       get().markMessagesRead(selectedUser._id);
-      // Update users sidebar
       set({
         users: get().users.map((u) =>
           u._id === selectedUser._id ? { ...u, lastMessage: newMessage, unreadCount: 0 } : u
@@ -120,7 +148,6 @@ export const useChatStore = create((set, get) => ({
       });
     });
 
-    // Typing events
     socket.on("userTyping", ({ senderId }) => {
       if (senderId === selectedUser._id) {
         set({ typingUsers: { ...get().typingUsers, [senderId]: true } });
@@ -132,12 +159,10 @@ export const useChatStore = create((set, get) => ({
       set({ typingUsers: t });
     });
 
-    // Read receipts — the other person read our messages that we SENT to them
     socket.on("messagesRead", ({ readBy }) => {
       if (String(readBy) === String(selectedUser._id)) {
         set({
           messages: get().messages.map((m) =>
-            // Only update OUR outgoing messages to that user
             String(m.senderId) === String(useAuthStore.getState().authUser._id)
               ? { ...m, status: "read" }
               : m
@@ -146,7 +171,6 @@ export const useChatStore = create((set, get) => ({
       }
     });
 
-    // Delivered receipts
     socket.on("messagesDelivered", ({ messageIds }) => {
       set({
         messages: get().messages.map((m) =>
@@ -155,7 +179,6 @@ export const useChatStore = create((set, get) => ({
       });
     });
 
-    // Remote delete (other person deleted for everyone)
     socket.on("messageDeleted", ({ messageId }) => {
       set({
         messages: get().messages.map((m) =>
@@ -163,17 +186,32 @@ export const useChatStore = create((set, get) => ({
         ),
       });
     });
+
+    // Online/offline presence toast for selected user
+    socket.on("userOnline", ({ userId }) => {
+      if (userId === selectedUser._id) {
+        toast(`${selectedUser.fullName} is now online`, { icon: "🟢", duration: 3000 });
+      }
+    });
+    socket.on("userOffline", ({ userId }) => {
+      if (userId === selectedUser._id) {
+        toast(`${selectedUser.fullName} went offline`, { icon: "⚫", duration: 3000 });
+      }
+    });
   },
 
   unsubscribeFromMessages: () => {
     const socket = useAuthStore.getState().socket;
-    socket.off("newMessage");
-    socket.off("userTyping");
-    socket.off("userStopTyping");
-    socket.off("messagesRead");
-    socket.off("messagesDelivered");
-    socket.off("messageDeleted");
+    socket?.off("newMessage");
+    socket?.off("userTyping");
+    socket?.off("userStopTyping");
+    socket?.off("messagesRead");
+    socket?.off("messagesDelivered");
+    socket?.off("messageDeleted");
+    socket?.off("userOnline");
+    socket?.off("userOffline");
   },
 
-  setSelectedUser: (selectedUser) => set({ selectedUser, replyingTo: null, typingUsers: {} }),
+  setSelectedUser: (selectedUser) =>
+    set({ selectedUser, replyingTo: null, typingUsers: {}, messages: [], hasMoreMessages: false }),
 }));

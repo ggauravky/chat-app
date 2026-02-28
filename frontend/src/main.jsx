@@ -12,3 +12,27 @@ createRoot(document.getElementById("root")).render(
     </BrowserRouter>
   </StrictMode>
 );
+
+// Register service worker for Web Push notifications
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("/sw.js")
+      .then((reg) => {
+        console.log("[SW] Registered, scope:", reg.scope);
+        // Ask for notification permission after first user interaction
+        document.addEventListener(
+          "click",
+          () => {
+            if (Notification.permission === "default") {
+              Notification.requestPermission().then((perm) => {
+                console.log("[Push] Permission:", perm);
+              });
+            }
+          },
+          { once: true }
+        );
+      })
+      .catch((err) => console.warn("[SW] Registration failed:", err));
+  });
+}

@@ -9,6 +9,7 @@ const MessageInput = () => {
   const [text, setText] = useState("");
   const [imagePreview, setImagePreview] = useState(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const { sendMessage, replyingTo, clearReplyingTo, selectedUser } = useChatStore();
@@ -37,6 +38,25 @@ const MessageInput = () => {
     const reader = new FileReader();
     reader.onloadend = () => setImagePreview(reader.result);
     reader.readAsDataURL(file);
+  };
+
+  const loadFile = (file) => {
+    if (!file?.type.startsWith("image/")) {
+      toast.error("Only image files are supported");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onloadend = () => setImagePreview(reader.result);
+    reader.readAsDataURL(file);
+  };
+
+  const handleDragOver = (e) => { e.preventDefault(); setIsDragging(true); };
+  const handleDragLeave = () => setIsDragging(false);
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) loadFile(file);
   };
 
   const removeImage = () => {
@@ -69,7 +89,18 @@ const MessageInput = () => {
   };
 
   return (
-    <div className="p-2 border-t border-base-300 bg-base-100">
+    <div
+      className={`p-2 border-t border-base-300 bg-base-100 relative transition-colors ${isDragging ? "ring-2 ring-green-500 bg-green-50/10" : ""}`}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Drag & drop overlay */}
+      {isDragging && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-green-500/10 border-2 border-dashed border-green-500 rounded-lg pointer-events-none">
+          <p className="text-green-600 font-semibold text-sm">Drop image here</p>
+        </div>
+      )}
       {/* Reply preview bar */}
       {replyingTo && (
         <div className="flex items-center gap-2 mb-2 px-3 py-1.5 bg-base-200 rounded-lg border-l-4 border-primary">
