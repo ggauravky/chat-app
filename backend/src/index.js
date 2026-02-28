@@ -33,7 +33,9 @@ app.use(
   cors({
     origin:
       process.env.NODE_ENV === "production"
-        ? true // Allow same origin for Render deployment
+        // FRONTEND_URL = your Vercel URL (e.g. https://zapp.vercel.app)
+        // If not set, falls back to same-origin (Render monolith deployment)
+        ? process.env.FRONTEND_URL || true
         : "http://localhost:5173",
     credentials: true,
   })

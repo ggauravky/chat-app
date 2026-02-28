@@ -3,10 +3,11 @@ import { axiosInstance } from "../lib/axios.js";
 import toast from "react-hot-toast";
 import { io } from "socket.io-client";
 
+// VITE_BACKEND_URL is set in Vercel dashboard for split deployment (frontend on Vercel, backend on Render).
+// Falls back to same origin when deployed as monolith on Render.
 const BASE_URL =
-  import.meta.env.MODE === "development"
-    ? "http://localhost:5001"
-    : window.location.origin;
+  import.meta.env.VITE_BACKEND_URL ||
+  (import.meta.env.MODE === "development" ? "http://localhost:5001" : window.location.origin);
 
 export const useAuthStore = create((set, get) => ({
   authUser: null,
