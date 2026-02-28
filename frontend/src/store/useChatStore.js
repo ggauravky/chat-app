@@ -65,13 +65,19 @@ export const useChatStore = create((set, get) => ({
   },
 
   sendMessage: async (messageData) => {
-    const { selectedUser, messages, replyingTo } = get();
+    const { selectedUser, messages, replyingTo, users } = get();
     try {
       const res = await axiosInstance.post(`/messages/send/${selectedUser._id}`, {
         ...messageData,
         replyTo: replyingTo?._id || null,
       });
       set({ messages: [...messages, res.data], replyingTo: null });
+      // Move recipient to top of contact list
+      const target = users.find((u) => u._id === selectedUser._id);
+      if (target) {
+        const updated = { ...target, lastMessage: res.data };
+        set({ users: [updated, ...users.filter((u) => u._id !== selectedUser._id)] });
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to send message");
     }
@@ -81,10 +87,15 @@ export const useChatStore = create((set, get) => ({
     try {
       await axiosInstance.put(`/messages/read/${userId}`);
       set({
+        // Mark all messages from this user as read in the chat view
         messages: get().messages.map((m) =>
           String(m.senderId) === String(userId) && m.status !== "read"
             ? { ...m, status: "read" }
             : m
+        ),
+        // Clear the unread badge in the sidebar
+        users: get().users.map((u) =>
+          String(u._id) === String(userId) ? { ...u, unreadCount: 0 } : u
         ),
       });
       const socket = useAuthStore.getState().socket;
@@ -121,30 +132,29 @@ export const useChatStore = create((set, get) => ({
 
     socket.on("newMessage", (newMessage) => {
       const fromSelected = newMessage.senderId === selectedUser._id;
+      const currentUsers = get().users;
+
       if (!fromSelected) {
-        const isMuted = get().users.find((u) => u._id === newMessage.senderId)?.isMuted;
+        const sender = currentUsers.find((u) => u._id === newMessage.senderId);
+        const isMuted = sender?.isMuted;
+        const updatedUser = { ...sender, lastMessage: newMessage, unreadCount: (sender?.unreadCount || 0) + 1 };
+        // Move sender to top of the list
         set({
-          users: get().users.map((u) =>
-            u._id === newMessage.senderId
-              ? { ...u, lastMessage: newMessage, unreadCount: (u.unreadCount || 0) + 1 }
-              : u
-          ),
+          users: [updatedUser, ...currentUsers.filter((u) => u._id !== newMessage.senderId)],
         });
-        // Show online toast for new message from non-selected user (only if not muted)
-        if (!isMuted) {
-          const sender = get().users.find((u) => u._id === newMessage.senderId);
-          if (sender) {
-            toast(`New message from ${sender.fullName}`, { icon: "💬", duration: 3000 });
-          }
+        if (!isMuted && sender) {
+          toast(`New message from ${sender.fullName}`, { icon: "💬", duration: 3000 });
         }
         return;
       }
+      // Message from currently selected user
       set({ messages: [...get().messages, newMessage] });
       get().markMessagesRead(selectedUser._id);
+      const selUser = currentUsers.find((u) => u._id === selectedUser._id);
+      const updatedSel = { ...selUser, lastMessage: newMessage, unreadCount: 0 };
+      // Move selected user to top too
       set({
-        users: get().users.map((u) =>
-          u._id === selectedUser._id ? { ...u, lastMessage: newMessage, unreadCount: 0 } : u
-        ),
+        users: [updatedSel, ...currentUsers.filter((u) => u._id !== selectedUser._id)],
       });
     });
 

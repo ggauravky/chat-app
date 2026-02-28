@@ -27,29 +27,31 @@ const ProfilePage = () => {
   };
 
   return (
-    <div className="h-screen pt-20">
-      <div className="max-w-2xl mx-auto p-4 py-8">
-        <div className="bg-base-300 rounded-xl p-6 space-y-8">
+    <div className="min-h-screen pt-20 pb-10">
+      <div className="max-w-2xl mx-auto px-4">
+        <div className="bg-base-300 rounded-xl shadow-lg p-6 space-y-6">
+
+          {/* Header */}
           <div className="text-center">
             <h1 className="text-2xl font-semibold">Profile</h1>
-            <p className="mt-1 text-sm text-base-content/60">Your profile information</p>
+            <p className="text-sm text-base-content/50 mt-1">Your profile information</p>
           </div>
 
           {/* Avatar */}
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative">
+          <div className="flex flex-col items-center gap-3">
+            <div className="relative w-32 h-32">
               <img
                 src={selectedImg || authUser.profilePic || "/avatar.png"}
                 alt="Profile"
-                className="size-32 rounded-full object-cover border-4 border-base-100"
+                style={{ width: "128px", height: "128px", borderRadius: "50%", objectFit: "cover", objectPosition: "center", display: "block" }}
               />
               <label
                 htmlFor="avatar-upload"
-                className={`absolute bottom-0 right-0 bg-primary hover:bg-primary/80 p-2 rounded-full cursor-pointer transition-all duration-200 ${
+                className={`absolute bottom-0 right-0 w-9 h-9 flex items-center justify-center bg-base-content/20 hover:bg-base-content/30 rounded-full cursor-pointer shadow-md transition-colors duration-200 border border-base-content/10 ${
                   isUpdatingProfile ? "animate-pulse pointer-events-none" : ""
                 }`}
               >
-                <Camera className="w-5 h-5 text-white" />
+                <Camera className="w-4 h-4" />
                 <input
                   type="file"
                   id="avatar-upload"
@@ -61,12 +63,9 @@ const ProfilePage = () => {
               </label>
             </div>
             <p className="text-sm text-base-content/50">
-              {isUpdatingProfile ? "Uploading..." : "Click the camera icon to update your photo"}
+              {isUpdatingProfile ? "Uploading…" : "Click the camera icon to update your photo"}
             </p>
           </div>
-
-          {/* Fields */}
-          <div className="space-y-4">
             <div className="space-y-1">
               <div className="text-xs text-base-content/50 flex items-center gap-1.5">
                 <User className="size-3.5" /> Full Name
@@ -113,29 +112,29 @@ const ProfilePage = () => {
                 </div>
               )}
             </div>
-          </div>
 
-          {/* Account info */}
-          <div className="bg-base-200 rounded-xl p-4">
-            <h2 className="text-sm font-medium mb-3">Account Information</h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center justify-between py-2 border-b border-base-300">
-                <span className="text-base-content/60">Member Since</span>
-                <span>{authUser.createdAt?.split("T")[0]}</span>
-              </div>
-              <div className="flex items-center justify-between py-2 border-b border-base-300">
-                <span className="text-base-content/60 flex items-center gap-1">
-                  <Clock className="size-3.5" /> Last Seen
-                </span>
-                <span className="text-xs">{formatLastSeen(authUser.lastSeen)}</span>
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-base-content/60">Account Status</span>
-                <span className="text-green-500 font-medium">Active</span>
+            {/* Account info */}
+            <div className="bg-base-200 rounded-xl p-4">
+              <h2 className="text-sm font-medium mb-3">Account Information</h2>
+              <div className="space-y-2 text-sm">
+                <div className="flex items-center justify-between py-2 border-b border-base-300">
+                  <span className="text-base-content/60">Member Since</span>
+                  <span>{authUser.createdAt?.split("T")[0]}</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b border-base-300">
+                  <span className="text-base-content/60 flex items-center gap-1">
+                    <Clock className="size-3.5" /> Last Seen
+                  </span>
+                  <span className="text-xs">{formatLastSeen(authUser.lastSeen)}</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-base-content/60">Account Status</span>
+                  <span className="text-green-500 font-medium">Active</span>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+
+        </div>{/* end card */}
       </div>
     </div>
   );

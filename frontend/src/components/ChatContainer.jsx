@@ -3,6 +3,7 @@ import { useEffect, useRef, useState, useCallback } from "react";
 import ChatHeader from "./ChatHeader";
 import MessageInput from "./MessageInput";
 import MessageSkeleton from "./skeletons/MessageSkeleton";
+import UserProfileModal from "./UserProfileModal";
 import { useAuthStore } from "../store/useAuthStore";
 import { formatMessageTime } from "../lib/utils";
 import { Check, CheckCheck, Trash2, Reply, MoreVertical, Copy, Star, StarOff, ChevronDown, X } from "lucide-react";
@@ -53,9 +54,11 @@ const ChatContainer = () => {
   } = useChatStore();
   const { authUser } = useAuthStore();
   const [seenPopover, setSeenPopover] = useState(null); // messageId
+  const [profileUser, setProfileUser] = useState(null); // for UserProfileModal
   const messageEndRef = useRef(null);
   const scrollContainerRef = useRef(null);
   const prevMsgCountRef = useRef(0);
+  const didInitialScrollRef = useRef(false);
 
   const [contextMenu, setContextMenu] = useState(null); // { messageId, isMine, message, x, y }
   const [starredIds, setStarredIds] = useState(() => {
@@ -66,10 +69,20 @@ const ChatContainer = () => {
   const [showScrollBtn, setShowScrollBtn] = useState(false);
 
   useEffect(() => {
+    didInitialScrollRef.current = false;
+    prevMsgCountRef.current = 0;
     getMessages(selectedUser._id);
     subscribeToMessages();
     return () => unsubscribeFromMessages();
   }, [selectedUser._id, getMessages, subscribeToMessages, unsubscribeFromMessages]);
+
+  // Scroll to the LAST message immediately when chat first loads
+  useEffect(() => {
+    if (!isMessagesLoading && messages.length > 0 && !didInitialScrollRef.current) {
+      didInitialScrollRef.current = true;
+      messageEndRef.current?.scrollIntoView({ behavior: "instant" });
+    }
+  }, [isMessagesLoading, messages.length]);
 
   // Mark as read when chat opens or user switches
   useEffect(() => {
@@ -152,7 +165,10 @@ const ChatContainer = () => {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden relative">
-      <ChatHeader />
+      <ChatHeader onAvatarClick={() => setProfileUser(selectedUser)} />
+
+      {/* Profile modal */}
+      {profileUser && <UserProfileModal user={profileUser} onClose={() => setProfileUser(null)} />}
 
       {/* Messages area */}
       <div
@@ -210,8 +226,9 @@ const ChatContainer = () => {
                   {showAvatar && (
                     <img
                       src={selectedUser.profilePic || "/avatar.png"}
-                      className="size-7 rounded-full object-cover"
+                      className="size-7 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-green-400 transition"
                       alt=""
+                      onClick={() => setProfileUser(selectedUser)}
                     />
                   )}
                 </div>

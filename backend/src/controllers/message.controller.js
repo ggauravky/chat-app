@@ -54,6 +54,13 @@ export const getUsersForSidebar = async (req, res) => {
       })
     );
 
+    // Sort by most recent message first; users with no messages go to the bottom
+    usersWithMeta.sort((a, b) => {
+      const aTime = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
+      const bTime = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
+
     res.status(200).json(usersWithMeta);
   } catch (error) {
     console.error("Error in getUsersForSidebar: ", error.message);

@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from "react";
-import { X, Phone, Video, MoreVertical, BellOff, Bell, ShieldOff, Shield } from "lucide-react";
+﻿import { useState, useRef, useEffect } from "react";
+import { X, Phone, Video, MoreVertical, BellOff, Bell, ShieldOff, Shield, ArrowLeft } from "lucide-react";
 import { useAuthStore } from "../store/useAuthStore";
 import { useChatStore } from "../store/useChatStore";
 import { formatLastSeen } from "../lib/utils";
 
-const ChatHeader = () => {
+const ChatHeader = ({ onAvatarClick }) => {
   const { selectedUser, setSelectedUser, typingUsers } = useChatStore();
   const { onlineUsers, authUser, blockUser, unblockUser, muteChat, unmuteChat } = useAuthStore();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -31,30 +31,45 @@ const ChatHeader = () => {
   }, [menuOpen]);
 
   return (
-    <div className="px-4 py-2.5 border-b border-base-300 bg-base-100 flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="avatar">
-          <div className="size-10 rounded-full">
-            <img src={selectedUser.profilePic || "/avatar.png"} alt={selectedUser.fullName} />
+    <div className="px-3 py-2.5 border-b border-base-300 bg-base-100 flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2 min-w-0">
+        {/* Back button â€” mobile only */}
+        <button
+          className="btn btn-ghost btn-sm btn-circle md:hidden shrink-0"
+          onClick={() => setSelectedUser(null)}
+          title="Back"
+        >
+          <ArrowLeft className="size-5" />
+        </button>
+
+        {/* Clickable avatar â†’ profile modal */}
+        <button
+          className="avatar shrink-0 rounded-full focus:outline-none hover:opacity-80 transition"
+          onClick={onAvatarClick}
+          title="View profile"
+        >
+          <div className="size-10 rounded-full overflow-hidden">
+            <img src={selectedUser.profilePic || "/avatar.png"} alt={selectedUser.fullName} className="w-full h-full object-cover" />
           </div>
-        </div>
-        <div>
-          <h3 className="font-semibold text-sm flex items-center gap-1.5">
+        </button>
+
+        <div className="min-w-0">
+          <h3 className="font-semibold text-sm flex items-center gap-1.5 truncate">
             {selectedUser.fullName}
-            {isBlocked && <span className="badge badge-error badge-xs">Blocked</span>}
-            {isMuted && !isBlocked && <BellOff className="size-3 text-base-content/40" />}
+            {isBlocked && <span className="badge badge-error badge-xs shrink-0">Blocked</span>}
+            {isMuted && !isBlocked && <BellOff className="size-3 text-base-content/40 shrink-0" />}
           </h3>
-          <p className={`text-xs ${isTyping ? "text-green-500" : "text-base-content/60"}`}>
+          <p className={`text-xs truncate ${isTyping ? "text-green-500" : "text-base-content/60"}`}>
             {isBlocked ? "You blocked this contact" : statusText}
           </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-1">
-        <button className="btn btn-ghost btn-sm btn-circle" title="Voice call (coming soon)">
+      <div className="flex items-center gap-1 shrink-0">
+        <button className="btn btn-ghost btn-sm btn-circle hidden sm:inline-flex" title="Voice call (coming soon)">
           <Phone className="size-4" />
         </button>
-        <button className="btn btn-ghost btn-sm btn-circle" title="Video call (coming soon)">
+        <button className="btn btn-ghost btn-sm btn-circle hidden sm:inline-flex" title="Video call (coming soon)">
           <Video className="size-4" />
         </button>
 
@@ -70,6 +85,16 @@ const ChatHeader = () => {
 
           {menuOpen && (
             <div className="absolute right-0 top-full mt-1 z-50 bg-base-100 border border-base-300 shadow-xl rounded-xl py-1.5 min-w-[180px]">
+              {/* View profile */}
+              <button
+                className="flex items-center gap-2 w-full px-4 py-2 text-sm hover:bg-base-200 transition"
+                onClick={() => { onAvatarClick?.(); setMenuOpen(false); }}
+              >
+                View profile
+              </button>
+
+              <div className="divider my-0.5 h-px bg-base-200" />
+
               {/* Mute / Unmute */}
               <button
                 className="flex items-center gap-2 w-full px-4 py-2 text-sm hover:bg-base-200 transition"
@@ -109,7 +134,8 @@ const ChatHeader = () => {
           )}
         </div>
 
-        <button className="btn btn-ghost btn-sm btn-circle" onClick={() => setSelectedUser(null)} title="Close">
+        {/* X â€” desktop only (mobile uses back arrow) */}
+        <button className="btn btn-ghost btn-sm btn-circle hidden md:inline-flex" onClick={() => setSelectedUser(null)} title="Close">
           <X className="size-4" />
         </button>
       </div>
