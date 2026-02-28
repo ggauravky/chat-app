@@ -58,7 +58,7 @@ const StoryBar = () => {
         {/* My story / Add button */}
         <div
           className="flex flex-col items-center gap-1 cursor-pointer shrink-0"
-          onClick={() => (myGroup ? openViewer(myGroup, 0) : setAddOpen(true))}
+          onClick={() => (myGroup ? openViewer(myGroup) : setAddOpen(true))}
         >
           <div className={`relative size-12 rounded-full p-0.5 ${myGroup ? "bg-gradient-to-tr from-green-400 to-teal-400" : "bg-base-300"}`}>
             <img
@@ -86,7 +86,7 @@ const StoryBar = () => {
             <div
               key={g.user._id}
               className="flex flex-col items-center gap-1 cursor-pointer shrink-0"
-              onClick={() => openViewer(g, gi + 1)} // gi+1 to offset myGroup
+              onClick={() => openViewer(g)}
             >
               <div
                 className={`size-12 rounded-full p-0.5 ${
@@ -212,8 +212,9 @@ const StoryBar = () => {
     </>
   );
 
-  function openViewer(group, _idx) {
-    setViewingStory({ groupIndex: _idx, storyIndex: 0 });
+  function openViewer(group) {
+    const groupIndex = grouped.findIndex((g) => g.user._id === group.user._id);
+    setViewingStory({ groupIndex: groupIndex === -1 ? 0 : groupIndex, storyIndex: 0 });
   }
 };
 

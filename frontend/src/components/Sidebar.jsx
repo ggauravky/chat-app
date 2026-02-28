@@ -109,6 +109,9 @@ const Sidebar = () => {
         </div>
       </div>
 
+      {/* Story bar */}
+      <StoryBar />
+
       {/* Contact list */}
       <div className="overflow-y-auto flex-1">
         {filteredUsers.map((user) => {
